@@ -3,9 +3,14 @@ FROM python:3.9
 
 WORKDIR /app
 
+# Copy producer script and requirements
 COPY producer/producer.py .
 COPY producer/requirements.txt .
 
+# Copy templates
+COPY producer/templates /app/templates
+
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 CMD ["python", "producer.py"]

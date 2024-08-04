@@ -32,6 +32,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.producer
+    volumes:
+      - ./producer/templates:/app/templates  # Volume mapping for templates
     environment:
       KAFKA_BROKER: kafka:29092
     depends_on:
@@ -41,6 +43,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.consumer
+    volumes:
+      - ./data:/app/data  # Volume mapping for output PDFs
     environment:
       KAFKA_BROKER: kafka:29092
     depends_on:

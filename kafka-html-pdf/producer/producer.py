@@ -1,5 +1,6 @@
 from kafka import KafkaProducer
 import json
+import os
 
 def send_message(template, data):
     producer = KafkaProducer(
@@ -18,10 +19,15 @@ def send_message(template, data):
 
 # Example usage
 if __name__ == "__main__":
-    template = open('/app/templates/example_template.html').read()
-    data = {
-        'title': 'Hello World',
-        'content': 'This is a PDF generated from HTML.'
-    }
+    template_path = '/app/templates/example_template.html'
+    
+    if os.path.exists(template_path):
+        template = open(template_path).read()
+        data = {
+            'title': 'Hello World',
+            'content': 'This is a PDF generated from HTML.'
+        }
 
-    send_message(template, data)
+        send_message(template, data)
+    else:
+        print(f"Template file not found at {template_path}")
