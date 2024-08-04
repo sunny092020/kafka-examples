@@ -3,9 +3,19 @@ FROM python:3.9
 
 WORKDIR /app
 
+# Install netcat-openbsd for wait-for-it script
+RUN apt-get update && apt-get install -y netcat-openbsd
+
+# Copy consumer script, requirements, and wait-for-it script
 COPY consumer/consumer.py .
 COPY consumer/requirements.txt .
+COPY wait-for-it.sh .
 
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["python", "consumer.py"]
+# Make wait-for-it.sh executable
+RUN chmod +x wait-for-it.sh
+
+# Command to run the wait-for-it script and then start the consumer
+CMD ["./wait-for-it.sh", "kafka", "29092", "--", "python", "consumer.py"]

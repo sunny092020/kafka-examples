@@ -4,9 +4,10 @@ from jinja2 import Template
 from weasyprint import HTML
 
 def consume_messages():
+    # Connect to the internal Docker network broker
     consumer = KafkaConsumer(
         'html_to_pdf',
-        bootstrap_servers='kafka:29092',
+        bootstrap_servers='kafka:9092',
         value_deserializer=lambda m: json.loads(m.decode('utf-8'))
     )
 

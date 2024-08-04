@@ -3,14 +3,22 @@ FROM python:3.9
 
 WORKDIR /app
 
-# Copy producer script and requirements
+# Install netcat-openbsd for wait-for-it script
+RUN apt-get update && apt-get install -y netcat-openbsd
+
+# Copy producer script, requirements, and wait-for-it script
 COPY producer/producer.py .
 COPY producer/requirements.txt .
+COPY wait-for-it.sh .
 
 # Copy templates
 COPY producer/templates /app/templates
 
-# Install dependencies
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["python", "producer.py"]
+# Make wait-for-it.sh executable
+RUN chmod +x wait-for-it.sh
+
+# Command to run the wait-for-it script and then start the producer
+CMD ["./wait-for-it.sh", "kafka", "29092", "--", "python", "producer.py"]

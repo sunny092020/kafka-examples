@@ -3,8 +3,9 @@ import json
 import os
 
 def send_message(template, data):
+    # Connect to the internal Docker network broker
     producer = KafkaProducer(
-        bootstrap_servers='kafka:29092',
+        bootstrap_servers='kafka:9092',
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
 
