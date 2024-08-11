@@ -2,3 +2,4 @@ kafka-python
 pyflink
 pdfkit
 PyPDF2
+protobuf
