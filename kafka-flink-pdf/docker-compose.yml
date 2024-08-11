@@ -53,6 +53,27 @@ services:
     depends_on:
       - jobmanager
 
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=kafka-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+    depends_on:
+      - kafka
+
+  zeppelin:
+    image: apache/zeppelin:0.10.0
+    ports:
+      - "8082:8080"
+    environment:
+      - ZEPPELIN_ADDR=0.0.0.0
+    depends_on:
+      - jobmanager
+      - taskmanager
+
 networks:
   default:
     driver: bridge
