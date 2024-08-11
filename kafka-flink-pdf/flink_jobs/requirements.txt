@@ -1,0 +1,4 @@
+kafka-python
+pyflink
+pdfkit
+PyPDF2
