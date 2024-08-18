@@ -1,6 +1,6 @@
 version: '3.7'
 services:
-
+  # Flink JobManager
   jobmanager:
     image: flink:latest
     networks:
@@ -9,18 +9,17 @@ services:
       - 8081:8081
     environment:
       FLINK_PROPERTIES: "jobmanager.rpc.address: jobmanager"
-    command:
-      - jobmanager
-
+    command: jobmanager
+  
+  # Flink TaskManager
   taskmanager:
     image: flink:latest
     networks:
       - flink-net
     environment:
       FLINK_PROPERTIES: "jobmanager.rpc.address: jobmanager"
-    command:
-      - taskmanager
-    
+    command: taskmanager
+
   zookeeper:
     image: wurstmeister/zookeeper
     networks:
@@ -31,61 +30,49 @@ services:
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka
       KAFKA_ADVERTISED_PORT: 9092
-      KAFKA_CREATE_TOPICS: "flink-topic:1:1"
+      KAFKA_CREATE_TOPICS: "input-topic:1:1,template-topic:1:1"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-    networks:
-      - flink-net
-  
-  app:
-    # /flink/bin/flink run -py /taskscripts/app.py --jobmanager jobmanager:8081 --target local
-    image: flink-app
-    build: 
-      context: .
-    environment: 
-      KAFKA_BROKER: kafka:9092
-      KAFKA_TOPIC: flink-topic
-      SINK_DIR: /sink
-    depends_on:
-      - kafka
-    volumes:
-      - ./sink:/sink
-    entrypoint:
-      - tail
-    command: 
-      - -f
-      - /dev/null
     networks:
       - flink-net
 
-  dummyproducer:
-    # kafka-console-producer.sh --topic flink-topic --bootstrap-server kafka:9092 < /test.txt
-    image: wurstmeister/kafka
+  # Producer App (sends input data and template to Kafka)
+  producer_app:
+    build:
+      context: .
+      dockerfile: Dockerfile  # Using the single Dockerfile in the root directory
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: kafka
-      KAFKA_ADVERTISED_PORT: 9092
-      KAFKA_CREATE_TOPICS: "flink-topic:1:1"
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-    depends_on:
-      - kafka
+      KAFKA_BROKER: kafka:9092
+      KAFKA_INPUT_TOPIC: input-topic
+      KAFKA_TEMPLATE_TOPIC: template-topic
     networks:
       - flink-net
+    volumes:
+      - ./producer:/taskscripts  # Mount the producer directory to /taskscripts
     entrypoint:
       - tail
-    command: 
+    command:
       - -f
       - /dev/null
-    # entrypoint:
-    #   - kafka-console-producer.sh
-    # command:
-    #   - --topic
-    #   - flink-topic
-    #   - --bootstrap-server
-    #   - kafka:9092
-    #   - < 
-    #   - /test.txt
-    restart: always
+
+  # Flink Consumer App (maps data to template and generates PDF)
+  pdf_printer_app:
+    build:
+      context: .
+      dockerfile: Dockerfile  # Using the same Dockerfile
+    environment:
+      KAFKA_BROKER: kafka:9092
+      KAFKA_INPUT_TOPIC: input-topic
+      KAFKA_TEMPLATE_TOPIC: template-topic
+      PDF_OUTPUT_DIR: /pdf_output
+    depends_on:
+      - kafka
+      - jobmanager
+      - taskmanager
     volumes:
-      - ./test_files/test_messages.txt:/test.txt:ro
+      - ./flink:/taskscripts  # Mount the flink directory to /taskscripts
+      - ./pdf_output:/pdf_output  # Mount the output directory for PDFs
+    networks:
+      - flink-net
 
 networks:
   flink-net:
