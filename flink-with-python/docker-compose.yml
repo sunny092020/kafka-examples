@@ -43,7 +43,6 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
       KAFKA_INPUT_TOPIC: input-topic
-      KAFKA_TEMPLATE_TOPIC: template-topic
     networks:
       - flink-net
     volumes:
@@ -62,7 +61,6 @@ services:
     environment:
       KAFKA_BROKER: kafka:9092
       KAFKA_INPUT_TOPIC: input-topic
-      KAFKA_TEMPLATE_TOPIC: template-topic
       PDF_OUTPUT_DIR: /pdf_output
     depends_on:
       - kafka
