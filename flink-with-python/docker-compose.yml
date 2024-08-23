@@ -73,6 +73,11 @@ services:
       - ./pdf_output:/pdf_output  # Mount the output directory for PDFs
     networks:
       - flink-net
+    entrypoint:
+      - tail
+    command:
+      - -f
+      - /dev/null
 
 networks:
   flink-net:

@@ -5,6 +5,7 @@ ARG FLINK_VER=1.18.1 \
 
 RUN apt update -y \
     && apt-get install -y --no-install-recommends \
+    wkhtmltopdf \
     openjdk-11-jdk=11.0.* \
     && pip install poetry==$POETRY_VER \
     && mkdir -p /taskscripts /jars /flink \
@@ -14,7 +15,7 @@ RUN apt update -y \
 
 WORKDIR /taskscripts
 
-COPY poetry.lock pyproject.toml ./
+COPY pyproject.toml ./
 
 ENV JAVA_HOME /usr/lib/jvm/java-11-openjdk-arm64/
 
