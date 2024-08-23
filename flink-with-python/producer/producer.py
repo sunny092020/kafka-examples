@@ -3,7 +3,7 @@ import json
 from kafka import KafkaProducer
 
 def send_data_and_template():
-    """Sends input data and HTML template to Kafka"""
+    """Sends combined input data and HTML template to Kafka"""
 
     # Initialize Kafka producer
     producer = KafkaProducer(
@@ -11,29 +11,27 @@ def send_data_and_template():
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
 
-    # Input data that will be mapped to the template
-    input_data = {
-        "title": "Sample Title",
-        "content": "This is sample content for the template."
+    # Input data and HTML template combined into one message
+    combined_message = {
+        "input_data": {
+            "title": "Sample Title",
+            "content": "This is sample content for the template."
+        },
+        "template": """
+        <html>
+            <head>
+                <title>{{ title }}</title>
+            </head>
+            <body>
+                <h1>{{ title }}</h1>
+                <p>{{ content }}</p>
+            </body>
+        </html>
+        """
     }
 
-    # HTML template with placeholders for dynamic data
-    html_template = """
-    <html>
-        <head>
-            <title>{{ title }}</title>
-        </head>
-        <body>
-            <h1>{{ title }}</h1>
-            <p>{{ content }}</p>
-        </body>
-    </html>
-    """
-
-    # Send input data and HTML template to separate Kafka topics
-    producer.send(os.environ["KAFKA_INPUT_TOPIC"], input_data)
-    producer.send(os.environ["KAFKA_TEMPLATE_TOPIC"], {"template": html_template})
-
+    # Send the combined message to the Kafka input topic
+    producer.send(os.environ["KAFKA_INPUT_TOPIC"], combined_message)
     producer.flush()
 
 if __name__ == "__main__":
