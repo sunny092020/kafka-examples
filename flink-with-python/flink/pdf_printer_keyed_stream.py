@@ -123,11 +123,6 @@ def flink_consumer_to_pdf():
     pdf_page_stream_2 = rendered_html_stream_2.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
     pdf_page_stream_3 = rendered_html_stream_3.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
 
-    # Disable chaining if necessary to ensure parallelism
-    pdf_page_stream_1.start_new_chain()
-    pdf_page_stream_2.start_new_chain()
-    pdf_page_stream_3.start_new_chain()
-
     # Merge the PDF pages into a single PDF
 
 
