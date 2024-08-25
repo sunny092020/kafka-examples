@@ -8,6 +8,9 @@ from pyflink.datastream.functions import MapFunction
 from jinja2 import Template
 import time
 from datetime import datetime
+import pdfkit
+from PyPDF2 import PdfMerger
+
 
 class DataMapFunction(MapFunction):
     """
@@ -34,6 +37,26 @@ class DataMapFunction(MapFunction):
         print("End map:", datetime.now().time())
 
         return rendered_html
+    
+
+class PDFGenerationFunction(MapFunction):
+    """
+    A Flink MapFunction that generates PDF from the rendered HTML.
+    """
+    def map(self, rendered_html):
+        print("Start print:", datetime.now().time())
+        print(f"Generating PDF for rendered HTML: {rendered_html}")
+        import time
+        time.sleep(3)
+        # Generate a unique filename for each page
+        pdf_output_path = os.path.join(os.environ.get("PDF_OUTPUT_DIR", "/pdf_output"), f"page_{hash(rendered_html)}.pdf")
+        
+        # Convert rendered HTML to PDF and save it as a single page PDF
+        pdfkit.from_string(rendered_html, pdf_output_path)
+        print("End print:", datetime.now().time())
+
+        return pdf_output_path
+
 
 def flink_consumer_to_pdf():
     """Flink task that reads input data and template from Kafka, processes HTML, generates PDFs for multiple pages, and joins them into a single PDF"""
@@ -94,6 +117,19 @@ def flink_consumer_to_pdf():
 
     # You can now continue to process these separate streams independently
     # (e.g., convert to PDFs, aggregate results, etc.)
+
+    # Step 3: Convert the rendered HTML to individual PDF pages using PDFGenerationFunction
+    pdf_page_stream_1 = rendered_html_stream_1.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
+    pdf_page_stream_2 = rendered_html_stream_2.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
+    pdf_page_stream_3 = rendered_html_stream_3.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
+
+    # Disable chaining if necessary to ensure parallelism
+    pdf_page_stream_1.start_new_chain()
+    pdf_page_stream_2.start_new_chain()
+    pdf_page_stream_3.start_new_chain()
+
+    # Merge the PDF pages into a single PDF
+
 
     # Execute the job
     env.execute("flink_consumer_to_pdf")
