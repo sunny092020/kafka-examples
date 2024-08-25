@@ -35,13 +35,13 @@ class DataMapFunction(MapFunction):
 
         return rendered_html
 
-
 def flink_consumer_to_pdf():
     """Flink task that reads input data and template from Kafka, processes HTML, generates PDFs for multiple pages, and joins them into a single PDF"""
 
     # Create a StreamExecutionEnvironment
     env = StreamExecutionEnvironment.get_execution_environment()
 
+    # Set global parallelism
     env.set_parallelism(3)
 
     # Add Flink Kafka connectors
@@ -63,6 +63,9 @@ def flink_consumer_to_pdf():
         kafka_source, WatermarkStrategy.no_watermarks(), "Kafka Input Source"
     )
 
+    # Set parallelism for data_stream operations explicitly
+    data_stream = data_stream.set_parallelism(3)
+
     # Helper function to create a stream for a specific page
     def create_page_stream(page_no):
         def key_selector(value):
@@ -73,10 +76,10 @@ def flink_consumer_to_pdf():
             return json.dumps({"page_data": page_data, "template": template})
 
         # Key the stream by extracting page data for the specified page number
-        keyed_stream = data_stream.map(key_selector, output_type=Types.STRING())
+        keyed_stream = data_stream.map(key_selector, output_type=Types.STRING()).set_parallelism(3)
         
         # Process the keyed stream with the DataMapFunction to render HTML for this page
-        rendered_html_stream = keyed_stream.map(DataMapFunction(), output_type=Types.STRING())
+        rendered_html_stream = keyed_stream.map(DataMapFunction(), output_type=Types.STRING()).set_parallelism(3)
         return rendered_html_stream
 
     # Create streams for each page (here we assume three pages)
@@ -84,12 +87,16 @@ def flink_consumer_to_pdf():
     rendered_html_stream_2 = create_page_stream(1)
     rendered_html_stream_3 = create_page_stream(2)
 
+    # Disable chaining if necessary to ensure parallelism
+    rendered_html_stream_1.start_new_chain()
+    rendered_html_stream_2.start_new_chain()
+    rendered_html_stream_3.start_new_chain()
+
     # You can now continue to process these separate streams independently
     # (e.g., convert to PDFs, aggregate results, etc.)
 
     # Execute the job
     env.execute("flink_consumer_to_pdf")
-
 
 if __name__ == "__main__":
     flink_consumer_to_pdf()
