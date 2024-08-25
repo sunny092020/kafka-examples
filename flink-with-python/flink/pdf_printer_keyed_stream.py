@@ -4,7 +4,7 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.common import WatermarkStrategy, Types
 from pyflink.datastream.connectors.kafka import KafkaSource, KafkaOffsetsInitializer
 from pyflink.common.serialization import SimpleStringSchema
-from pyflink.datastream.functions import MapFunction
+from pyflink.datastream.functions import MapFunction, FlatMapFunction
 from jinja2 import Template
 import time
 from datetime import datetime
@@ -56,6 +56,39 @@ class PDFGenerationFunction(MapFunction):
         print("End print:", datetime.now().time())
 
         return pdf_output_path
+
+
+class PDFMergerFunction(FlatMapFunction):
+    """
+    A FlatMapFunction that merges individual PDF pages into a single PDF file.
+    """
+    def __init__(self):
+        self.pdf_paths = []
+
+    def flat_map(self, value):
+        # Collect the individual PDF file paths
+        self.pdf_paths.append(value)
+
+        # If all PDFs have been processed, merge them into a single PDF
+        if len(self.pdf_paths) == 3:  # Assuming three pages for this example
+            print("Merging PDF pages into a single PDF...")
+            pdf_output_dir = os.environ.get("PDF_OUTPUT_DIR", "/pdf_output")
+            merged_pdf_path = os.path.join(pdf_output_dir, "merged_output.pdf")
+
+            # Initialize a PdfMerger
+            merger = PdfMerger()
+
+            # Add each individual PDF file to the merger
+            for pdf_path in self.pdf_paths:
+                merger.append(pdf_path)
+
+            # Write the merged PDF to a file
+            merger.write(merged_pdf_path)
+            merger.close()
+            print(f"PDF merged successfully into {merged_pdf_path}")
+
+            # Yield the path of the merged PDF as the result
+            yield merged_pdf_path
 
 
 def flink_consumer_to_pdf():
@@ -124,6 +157,9 @@ def flink_consumer_to_pdf():
     pdf_page_stream_3 = rendered_html_stream_3.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
 
     # Merge the PDF pages into a single PDF
+    # Merge the individual PDF pages into a single PDF using the PDFMergerFunction
+    merged_pdf_stream = pdf_page_stream_1.union(pdf_page_stream_2, pdf_page_stream_3) \
+                                          .flat_map(PDFMergerFunction(), output_type=Types.STRING()).set_parallelism(1)
 
 
     # Execute the job
