@@ -12,6 +12,22 @@ from PyPDF2 import PdfMerger
 from pyflink.datastream.window import CountWindow, GlobalWindows, TumblingProcessingTimeWindows
 from pyflink.common.time import Time
 from datetime import datetime
+from pyflink.datastream.window import GlobalWindows, CountTrigger
+
+class CollectPdfPathsFunction(ProcessAllWindowFunction):
+    """
+    A ProcessAllWindowFunction that collects PDF paths and returns them as a list when the trigger condition is met.
+    """
+    def process(self, context: ProcessAllWindowFunction.Context, elements):
+        pdf_paths = []
+        for element in elements:
+            print(f"[CollectPdfPathsFunction] Processing element: {element}")
+            pdf_paths.append(element)
+
+        # Emit all collected PDF paths once the trigger condition is met
+        if pdf_paths:
+            print(f"[CollectPdfPathsFunction] Emitting PDF paths: {pdf_paths}")
+            yield pdf_paths  # Yield the list of PDF paths as an iterable
 
 
 
@@ -88,6 +104,9 @@ class PDFJoiner(MapFunction):
         for pdf_path in pdf_page_paths:
             merger.append(pdf_path)
 
+            # remove the individual PDF page after merging
+            os.remove(pdf_path)
+
         # Output path for the final joined PDF
         final_pdf_path = os.path.join(os.environ.get("PDF_OUTPUT_DIR", "/pdf_output"), "final_output.pdf")
         
@@ -149,15 +168,13 @@ def flink_consumer_to_pdf():
     # Step 3: Convert the rendered HTML to individual PDF pages using PDFGenerationFunction
     pdf_page_stream = rendered_html_stream.map(PDFGenerationFunction(), output_type=Types.STRING())
 
-    # Step 4: Use a tumbling processing time window to collect PDF paths
-    pdf_page_paths_collected_stream = (
-        pdf_page_stream
-        .window_all(TumblingProcessingTimeWindows.of(Time.seconds(5)))  # 30 second window for testing
+        # Step 4: Use GlobalWindows with a CountTrigger to collect a fixed number of PDF page paths
+    windowed_pdf_paths_stream = pdf_page_stream.window_all(GlobalWindows.create()) \
+        .trigger(CountTrigger.of(3)) \
         .process(CollectPdfPathsFunction(), output_type=Types.LIST(Types.STRING()))
-    )
 
-    # Map to join PDFs
-    final_pdf_stream = pdf_page_paths_collected_stream.map(PDFJoiner(), output_type=Types.STRING())
+    # Step 5: Join the collected PDF pages into a single PDF using PDFJoiner
+    final_pdf_stream = windowed_pdf_paths_stream.map(PDFJoiner(), output_type=Types.STRING())
 
     # Execute the job
     env.execute("flink_consumer_to_pdf")
