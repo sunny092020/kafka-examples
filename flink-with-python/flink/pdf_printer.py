@@ -120,7 +120,6 @@ def flink_consumer_to_pdf():
 
     # Create a StreamExecutionEnvironment
     env = StreamExecutionEnvironment.get_execution_environment()
-    env.set_parallelism(3)
 
     # Add Flink Kafka connectors
     env.add_jars("file:///jars/flink-sql-connector-kafka-3.0.1-1.18.jar")
@@ -145,10 +144,10 @@ def flink_consumer_to_pdf():
     split_pages_stream = data_stream.flat_map(InputSplitter(), output_type=Types.MAP(Types.STRING(), Types.STRING()))
 
     # Step 2: Render HTML for each page independently using DataMapFunction
-    rendered_html_stream = split_pages_stream.map(DataMapFunction(), output_type=Types.STRING()).set_parallelism(3)
+    rendered_html_stream = split_pages_stream.map(DataMapFunction(), output_type=Types.STRING())
 
     # Step 3: Convert the rendered HTML to individual PDF pages using PDFGenerationFunction
-    pdf_page_stream = rendered_html_stream.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
+    pdf_page_stream = rendered_html_stream.map(PDFGenerationFunction(), output_type=Types.STRING())
 
     # Step 4: Use a tumbling processing time window to collect PDF paths
     pdf_page_paths_collected_stream = (
