@@ -82,6 +82,9 @@ class PDFMergerFunction(FlatMapFunction):
             for pdf_path in self.pdf_paths:
                 merger.append(pdf_path)
 
+                # Remove the individual PDF file after merging
+                os.remove(pdf_path)
+
             # Write the merged PDF to a file
             merger.write(merged_pdf_path)
             merger.close()
@@ -119,9 +122,6 @@ def flink_consumer_to_pdf():
         kafka_source, WatermarkStrategy.no_watermarks(), "Kafka Input Source"
     )
 
-    # Set parallelism for data_stream operations explicitly
-    data_stream = data_stream.set_parallelism(3)
-
     # Helper function to create a stream for a specific page
     def create_page_stream(page_no):
         def key_selector(value):
@@ -132,10 +132,10 @@ def flink_consumer_to_pdf():
             return json.dumps({"page_data": page_data, "template": template})
 
         # Key the stream by extracting page data for the specified page number
-        keyed_stream = data_stream.map(key_selector, output_type=Types.STRING()).set_parallelism(3)
+        keyed_stream = data_stream.map(key_selector, output_type=Types.STRING())
         
         # Process the keyed stream with the DataMapFunction to render HTML for this page
-        rendered_html_stream = keyed_stream.map(DataMapFunction(), output_type=Types.STRING()).set_parallelism(3)
+        rendered_html_stream = keyed_stream.map(DataMapFunction(), output_type=Types.STRING())
         return rendered_html_stream
 
     # Create streams for each page (here we assume three pages)
@@ -152,14 +152,14 @@ def flink_consumer_to_pdf():
     # (e.g., convert to PDFs, aggregate results, etc.)
 
     # Step 3: Convert the rendered HTML to individual PDF pages using PDFGenerationFunction
-    pdf_page_stream_1 = rendered_html_stream_1.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
-    pdf_page_stream_2 = rendered_html_stream_2.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
-    pdf_page_stream_3 = rendered_html_stream_3.map(PDFGenerationFunction(), output_type=Types.STRING()).set_parallelism(3)
+    pdf_page_stream_1 = rendered_html_stream_1.map(PDFGenerationFunction(), output_type=Types.STRING())
+    pdf_page_stream_2 = rendered_html_stream_2.map(PDFGenerationFunction(), output_type=Types.STRING())
+    pdf_page_stream_3 = rendered_html_stream_3.map(PDFGenerationFunction(), output_type=Types.STRING())
 
     # Merge the PDF pages into a single PDF
     # Merge the individual PDF pages into a single PDF using the PDFMergerFunction
     merged_pdf_stream = pdf_page_stream_1.union(pdf_page_stream_2, pdf_page_stream_3) \
-                                          .flat_map(PDFMergerFunction(), output_type=Types.STRING()).set_parallelism(1)
+                                          .flat_map(PDFMergerFunction(), output_type=Types.STRING())
 
 
     # Execute the job
