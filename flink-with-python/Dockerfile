@@ -24,4 +24,3 @@ RUN poetry export -f requirements.txt -o requirements.txt --without-hashes \
     && rm -f requirements.txt
 
 ADD https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-kafka/3.0.1-1.18/flink-sql-connector-kafka-3.0.1-1.18.jar /jars
-COPY flink_with_python/* ./
