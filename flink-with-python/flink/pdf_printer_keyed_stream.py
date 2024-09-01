@@ -100,9 +100,6 @@ def flink_consumer_to_pdf():
     # Create a StreamExecutionEnvironment
     env = StreamExecutionEnvironment.get_execution_environment()
 
-    # Set global parallelism
-    env.set_parallelism(3)
-
     # Add Flink Kafka connectors
     env.add_jars("file:///jars/flink-sql-connector-kafka-3.0.1-1.18.jar")
 
