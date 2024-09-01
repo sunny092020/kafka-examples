@@ -159,6 +159,10 @@ def flink_consumer_to_pdf():
         kafka_source, WatermarkStrategy.no_watermarks(), "Kafka Input Source"
     )
 
+    # Extract number of pages from the first message
+    message_example = json.loads(data_stream.execute_and_collect().__next__())
+    num_pages = len(message_example.get("pages_data", []))
+
     # Step 1: Split the input data into pages
     split_pages_stream = data_stream.flat_map(InputSplitter(), output_type=Types.MAP(Types.STRING(), Types.STRING()))
 
@@ -170,7 +174,7 @@ def flink_consumer_to_pdf():
 
         # Step 4: Use GlobalWindows with a CountTrigger to collect a fixed number of PDF page paths
     windowed_pdf_paths_stream = pdf_page_stream.window_all(GlobalWindows.create()) \
-        .trigger(CountTrigger.of(3)) \
+        .trigger(CountTrigger.of(num_pages)) \
         .process(CollectPdfPathsFunction(), output_type=Types.LIST(Types.STRING()))
 
     # Step 5: Join the collected PDF pages into a single PDF using PDFJoiner
