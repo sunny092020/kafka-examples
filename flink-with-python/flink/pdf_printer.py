@@ -147,7 +147,7 @@ def flink_consumer_to_pdf():
     kafka_source = (
         KafkaSource.builder()
         .set_bootstrap_servers(os.environ["KAFKA_BROKER"])
-        .set_topics(os.environ["KAFKA_INPUT_TOPIC"])
+        .set_topics("pdf_printer_topic")
         .set_group_id("flink_input_group")
         .set_starting_offsets(KafkaOffsetsInitializer.earliest())
         .set_value_only_deserializer(SimpleStringSchema())

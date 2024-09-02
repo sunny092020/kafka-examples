@@ -54,7 +54,6 @@ services:
       dockerfile: Dockerfile  # Using the single Dockerfile in the root directory
     environment:
       KAFKA_BROKER: kafka:9092
-      KAFKA_INPUT_TOPIC: input-topic
     networks:
       - flink-net
     volumes:
@@ -72,7 +71,6 @@ services:
       dockerfile: Dockerfile  # Using the same Dockerfile
     environment:
       KAFKA_BROKER: kafka:9092
-      KAFKA_INPUT_TOPIC: input-topic
       PDF_OUTPUT_DIR: /pdf_output
     depends_on:
       - kafka
